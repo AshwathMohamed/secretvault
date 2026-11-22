@@ -1,0 +1,18 @@
+== pti-compare Sun Nov 22 08:50:46 AM IST 2026 kernel 7.0.0-43-generic ==
+meltdown status (before): Mitigation: PTI
+pti=on runs:
+  run 1: iters=5000000  avg_ns_per_syscall=603.6
+  run 2: iters=5000000  avg_ns_per_syscall=597.2
+  run 3: iters=5000000  avg_ns_per_syscall=602.7
+
+meltdown status (pti=off boot): Vulnerable
+pti=off runs:
+  run 1: iters=5000000  avg_ns_per_syscall=509.6
+  run 2: iters=5000000  avg_ns_per_syscall=532.0
+  run 3: iters=5000000  avg_ns_per_syscall=543.3
+
+meltdown status (restored): Mitigation: PTI
+
+average ns per syscall: pti=on 601.2  pti=off 528.3
+kpti tax per syscall (ns): 72.9
+== done ==

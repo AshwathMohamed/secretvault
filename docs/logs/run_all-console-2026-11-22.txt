@@ -1,0 +1,89 @@
+(console output of `sudo tests/run_all.sh`, copied from the terminal session on 2026-11-22; the script's own log was results/run-20261122-085625.log)
+== environment ==
+kernel : 7.0.0-43-generic
+headers: present
+meltdown: Mitigation: PTI
+cmdline : BOOT_IMAGE=/boot/vmlinuz-7.0.0-43-generic root=UUID=fd1df36b-00f3-4a5c-a6b1-ae6e605fff33 ro quiet splash
+
+== T03 scanner positive control (normal page) ==
+control(normal page) pfn=0x721a5 dmap_lookup_rc=0 present=1 level=2 readable=1
+alias_present=1 alias_residual_np=0
+  alias[0] va=ffff8972b2000000 level=2 present=1
+RESULT: PASS scanner-sees-normal-alias
+[PASS] T03 scanner finds a normal page's mapping
+
+== T04 alloc + hidden-state checks ==
+alloc ok id=0 pfn=0x7090a dmap=ffff8972b090a000
+[PASS] T04a alloc
+id=0 pfn=0x7090a dmap=ffff8972b090a000
+dmap_lookup_rc=0 dmap_pte_present=0 level=1 nofault_read_ok=0
+alias_present=0 alias_residual_np=1
+  alias[0] va=ffff8972b090a000 level=1 present=0
+PRESENT_ALIAS_CHECK: PASS (no present mapping, not readable; the Meltdown-US-style property)
+RESIDUAL_NP_INFO: 1 non-present PTE(s) still hold this pfn (expected >=1 in this design; L1TF-class exposure, NOT covered)
+[PASS] T04b no present alias, not readable
+[PASS] T04c scanner sees stale non-present PTE (residual_np=1; L1TF-class caveat)
+
+== T05 /proc/kcore while closed ==
+status=FULL_READ pattern_words=0 nonzero_bytes=0
+
+== T06 access window ==
+access rc=0 mismatches=0 xor=0x0 RESULT: PASS secret-intact
+[PASS] T06a secret intact via window
+id=0 pfn=0x7090a dmap=ffff8972b090a000
+dmap_lookup_rc=0 dmap_pte_present=0 level=1 nofault_read_ok=0
+alias_present=0 alias_residual_np=1
+  alias[0] va=ffff8972b090a000 level=1 present=0
+PRESENT_ALIAS_CHECK: PASS (no present mapping, not readable; the Meltdown-US-style property)
+RESIDUAL_NP_INFO: 1 non-present PTE(s) still hold this pfn (expected >=1 in this design; L1TF-class exposure, NOT covered)
+[PASS] T06b hidden again after window
+
+== T07 positive control for kcore: window open (v1 exposure, expected visible) ==
+during window: status=FULL_READ pattern_words=512 nonzero_bytes=4096
+[PASS] T07 kcore CAN read the secret during the window (known v1 limitation; probe is trustworthy)
+
+== T05 verdict (needs T07's positive control) ==
+[PASS] T05 kcore cannot see the secret while closed (status=FULL_READ)
+after window: status=FULL_READ pattern_words=0 nonzero_bytes=0
+[PASS] T07b hidden again after window
+
+== T08 benchmark ==
+bench iters=2000
+baseline_alloc_free_ns_avg=414
+vault_alloc_free_ns_avg=201155
+window_open_close_ns_avg=183257
+
+== T09 free ==
+free ok id=0
+[PASS] T09 free
+
+== T12 lifetime stress: concurrent access racing free (use with a KASAN kernel if you have one) ==
+stress threads=4 iters=2000 ok=54 freed_under_us=7946 errors=0
+RESULT: PASS no-uaf-no-errors
+[PASS] T12.1 stress
+stress threads=4 iters=2000 ok=35 freed_under_us=7965 errors=0
+RESULT: PASS no-uaf-no-errors
+[PASS] T12.2 stress
+stress threads=4 iters=2000 ok=29 freed_under_us=7971 errors=0
+RESULT: PASS no-uaf-no-errors
+[PASS] T12.3 stress
+secrets=0
+[PASS] T12 no leaked secrets
+
+== T13 negative cases ==
+[free 99] ERROR: no secret with id 99
+[PASS] T13 'free 99' rejected cleanly
+[access 5] ERROR: no secret with id 5
+[PASS] T13 'access 5' rejected cleanly
+[check 7] ERROR: no secret with id 7
+[PASS] T13 'check 7' rejected cleanly
+[hold 77 10] ERROR: no secret with id 77
+[PASS] T13 'hold 77 10' rejected cleanly
+[bogus] ERROR: unknown or malformed command
+[PASS] T13 'bogus' rejected cleanly
+
+== T14 unload with live secrets ==
+[PASS] T14 rmmod with 3 live secrets
+[PASS] dmesg clean for the whole run
+
+== SUMMARY: 21 passed, 0 failed, 0 inconclusive  (log: results/run-20261122-085625.log) ==
